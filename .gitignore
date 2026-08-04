@@ -1,0 +1,6 @@
+.pytest_cache/
+perception/target_detection/outputs/
+perception/target_detection/.pytest_cache/
+**/__pycache__/
+*.pyc
+.venv/
