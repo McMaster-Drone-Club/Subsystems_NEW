@@ -3,6 +3,7 @@
 from perception.target_detection.detectors.base import Detection, DetectorResult, TimingInfo
 from perception.target_detection.detectors.blob_detector import BlobDetector
 from perception.target_detection.detectors.hough_detector import HoughCircleDetector
+from perception.target_detection.detectors.hsv_detector import HSVDetector
 
 __all__ = [
     "BlobDetector",
@@ -10,4 +11,5 @@ __all__ = [
     "DetectorResult",
     "HoughCircleDetector",
     "TimingInfo",
+    "HSVDetector",
 ]
