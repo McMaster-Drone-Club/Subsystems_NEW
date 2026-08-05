@@ -1,0 +1,59 @@
+method: hsv
+
+preprocessing:
+  blur:
+    type: median
+    kernel_size: 5
+    sigma_x: 0
+
+  clahe:
+    enabled: false
+    clip_limit: 2.0
+    tile_grid_size: 8
+
+hsv:
+  ranges:
+      #red
+    - lower: [0, 100, 100]
+      upper: [10, 255, 255]
+    - lower: [170, 100, 100]
+      upper: [179, 255, 255]
+
+      #green
+    - lower: [50, 100, 100]
+      upper: [70, 255, 255]
+
+      #blue
+    - lower: [110, 100, 100]
+      upper: [130, 255, 255]
+
+      #yellow
+    - lower: [20, 100, 100]
+      upper: [40, 255, 255]
+
+      #white
+    - lower: [0, 0, 100]
+      upper: [0, 0, 255]
+
+      #orange
+    - lower: [5, 100, 100]
+      upper: [25, 255, 255]
+
+      #pink
+    - lower: [140, 100, 100]
+      upper: [160, 255, 255]
+
+      #cyan
+    - lower: [80, 100, 100]
+      upper: [100, 255, 255]
+
+
+morphology:
+  open_kernel_size: 5
+  open_iterations: 1
+  close_kernel_size: 5
+  close_iterations: 2
+
+contour:
+  min_area: 40
+  min_circularity: 0.55
