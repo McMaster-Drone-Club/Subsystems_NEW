@@ -14,20 +14,21 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from perception.target_detection.detectors import BlobDetector, HoughCircleDetector
+from perception.target_detection.detectors import BlobDetector, HoughCircleDetector, HSVDetector
 from perception.target_detection.detectors.base import Detection, DetectorResult
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff"}
 DEFAULT_CONFIGS = {
     "hough": REPO_ROOT / "perception" / "target_detection" / "configs" / "hough.yaml",
     "blob": REPO_ROOT / "perception" / "target_detection" / "configs" / "blob.yaml",
+    "hsv": REPO_ROOT / "perception" / "target_detection" / "configs" / "hsv.yaml",
 }
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "perception" / "target_detection" / "outputs"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Hough or blob target detection.")
-    parser.add_argument("--detector", choices=("hough", "blob"), required=True)
+    parser.add_argument("--detector", choices=("hough", "blob", "hsv"), required=True)
     parser.add_argument("--input", required=True, help="Image file or directory of images.")
     parser.add_argument("--config", help="YAML detector config path. Defaults to detector config.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
@@ -84,6 +85,8 @@ def build_detector(detector_name: str, config_path: Path):
         return HoughCircleDetector.from_config(config_path)
     if detector_name == "blob":
         return BlobDetector.from_config(config_path)
+    if detector_name == "hsv":
+        return HSVDetector.from_config(config_path)
     raise ValueError(f"Unsupported detector: {detector_name}")
 
 
