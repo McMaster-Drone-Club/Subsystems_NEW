@@ -10,14 +10,14 @@ blob:
   min_threshold: 10
   max_threshold: 240
   threshold_step: 10
-  min_dist_between_blobs: 20
-  filter_by_color: true
+  min_dist_between_blobs: 50
+  filter_by_color: false
   blob_color: 255
   filter_by_area: true
-  min_area: 120
-  max_area: 25000
+  min_area: 300
+  max_area: 40000
   filter_by_circularity: true
-  min_circularity: 0.65
+  min_circularity: 0.55
   filter_by_convexity: false
   min_convexity: 0.75
   filter_by_inertia: false
