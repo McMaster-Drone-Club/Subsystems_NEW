@@ -2,7 +2,7 @@
 
 ## Purpose and scope
 
-This package contains the Hough-circle and blob-detector portion of the colored-target benchmark work for McMaster-Drone-Club/VM_Scripts_NEW issue #4. It does not implement HSV/color segmentation, final benchmark metrics, annotations, or the shared batch benchmark script.
+This package contains Hough-circle, blob, and HSV colored-target detectors plus a shared labeled benchmark for McMaster-Drone-Club/VM_Scripts_NEW issue #4.
 
 ## Folder structure
 
@@ -55,6 +55,20 @@ python -m pytest perception\target_detection\tests
 The unit tests use deterministic synthetic OpenCV/NumPy images with known circle geometry. The uploaded `test-images` files are used for smoke testing only until annotations exist.
 
 ## Runner commands
+
+Run the reproducible benchmark for all detectors:
+
+```powershell
+python perception\target_detection\scripts\benchmark.py
+```
+
+Run only the tuned Hough and blob detectors:
+
+```powershell
+python perception\target_detection\scripts\benchmark.py --detectors hough blob
+```
+
+The benchmark uses images from `test-images`, COCO ground truth from `test-image-annotations\annotations.coco.json`, and the checked-in global configurations in `perception\target_detection\configs`. Annotated overlays are generated in `perception\target_detection\outputs\benchmark\annotated`.
 
 Run Hough on one image and save an annotation:
 
@@ -125,13 +139,11 @@ Image loading, annotation drawing, and output writing are excluded from detector
 
 `configs\blob.yaml` controls grayscale preprocessing, blur, threshold range, area range, circularity, convexity, inertia, minimum blob spacing, and optional blob color filtering. SimpleBlobDetector keypoint size is interpreted as blob diameter, so reported radius is `keypoint.size / 2`.
 
-The current configs are baseline shared parameter sets for the complete `test-images` folder. They are not tuned per image.
+The checked-in parameters are one global configuration per detector; no filename, image-specific value, or ground-truth coordinate is used by detector logic. Hough and blob were tuned with controlled changes to smoothing, Hough voting/radius/spacing, and blob threshold/area/shape/spacing filters. The measured trials and remaining limitations are summarized in `TUNING_NOTES.md`.
 
-## Integration with teammate benchmark
+## Benchmark metrics
 
-The future benchmark script can keep its own image loading, annotations, metric calculations, and reporting. It can import either detector, instantiate from YAML, and call `.detect(bgr_image)`. If a different benchmark contract is introduced later, `detectors\base.py` is intentionally isolated so only the adapter layer should need changes.
-
-No completed annotation files were present when this implementation was created, so accuracy, false-positive rate, center error, and size error are not calculated here.
+The shared benchmark reports TP, FP, FN, precision, recall, F1, matched center error, matched bounding-box IoU, and preprocessing/detection/total latency. All detectors are evaluated against the same annotations and matching rules.
 
 ## Known failure cases
 

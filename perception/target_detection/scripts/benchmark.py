@@ -298,8 +298,20 @@ def summarize_method(evaluations: list[ImageEvaluation]) -> dict[str, Any]:
     all_total_ms = [ev.timing.timing.total_ms for ev in evaluations]
     all_detect_ms = [ev.timing.timing.detection_ms for ev in evaluations]
     all_preprocess_ms = [ev.timing.timing.preprocessing_ms for ev in evaluations]
+    true_positives = sum(ev.num_gt - ev.false_negatives for ev in evaluations)
+    false_positives = sum(ev.false_positives for ev in evaluations)
+    false_negatives = sum(ev.false_negatives for ev in evaluations)
+    precision = true_positives / (true_positives + false_positives) if true_positives + false_positives else 0.0
+    recall = true_positives / (true_positives + false_negatives) if true_positives + false_negatives else 0.0
+    f1 = 2.0 * precision * recall / (precision + recall) if precision + recall else 0.0
 
     return {
+        "true_positives": true_positives,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
         "center_error_px": _stats(all_center_errors),
         "iou": _stats(all_ious),
         "total_latency_ms": _stats(all_total_ms),
@@ -410,12 +422,22 @@ def _fmt(value: float | None) -> str:
 def print_accuracy_table(summaries: dict[str, dict[str, Any]], num_images: int) -> None:
     print(f"\nEvaluated {num_images} image(s).\n")
     print("Accuracy")
-    header = f"{'method':<8} {'center_err_px':>14} {'iou':>8} {'total_latency_ms':>18}"
+    header = (
+        f"{'method':<8} {'TP':>4} {'FP':>5} {'FN':>4} "
+        f"{'precision':>10} {'recall':>8} {'F1':>8} "
+        f"{'center_err_px':>14} {'iou':>8} {'total_latency_ms':>18}"
+    )
     print(header)
     print("-" * len(header))
     for method, summary in summaries.items():
         print(
             f"{method:<8} "
+            f"{summary['true_positives']:>4} "
+            f"{summary['false_positives']:>5} "
+            f"{summary['false_negatives']:>4} "
+            f"{_fmt(summary['precision']):>10} "
+            f"{_fmt(summary['recall']):>8} "
+            f"{_fmt(summary['f1']):>8} "
             f"{_fmt(summary['center_error_px']['mean']):>14} "
             f"{_fmt(summary['iou']['mean']):>8} "
             f"{_fmt(summary['total_latency_ms']['mean']):>18}"
