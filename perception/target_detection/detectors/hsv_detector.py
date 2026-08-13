@@ -37,7 +37,9 @@ class HSVDetector(BaseTargetDetector):
         preprocess_start = time.perf_counter()
         hsv = self._preprocess(image)
         mask = self._threshold(hsv)
+        cv2.imwrite("4-mask.png", mask) #test
         mask = self._apply_morphology(mask)
+        cv2.imwrite("5-cleaned-mask.png", mask) #test
         preprocessing_ms = (time.perf_counter() - preprocess_start) * 1000.0
 
         detector_start = time.perf_counter()
@@ -70,13 +72,15 @@ class HSVDetector(BaseTargetDetector):
                 blurred = cv2.GaussianBlur(image, (kernel_size, kernel_size), sigma_x)
             else:
                 raise ValueError(f"Unsupported HSV blur type: {blur_type}")
-
+        cv2.imwrite("1-blurred-bgr.png", blurred) #test
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+        cv2.imwrite("2-blurred-hsv.png", hsv) #test
 
         # CLAHE
         clahe_config = preprocessing.get("clahe", {})
         if clahe_config.get("enabled", False):
             hsv = self._apply_clahe(hsv, clahe_config)
+            cv2.imwrite("3-clahe.png", hsv) #test
 
         return hsv
 
@@ -105,7 +109,7 @@ class HSVDetector(BaseTargetDetector):
                 if mask is None:
                     mask = partial
                 else:
-                    cv2.bitwise_or(mask, partial)
+                    mask = cv2.bitwise_or(mask, partial)
 
             if mask is None:
                 raise ValueError("HSV config 'ranges' must contain at least one entry.")
