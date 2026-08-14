@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import pytest
 
-from perception.target_detection.detectors import BlobDetector, HoughCircleDetector
+from perception.target_detection.detectors import BlobDetector, HoughCircleDetector, HybridDetector
 from perception.target_detection.detectors.base import Detection, DetectorResult, load_yaml_config
 
 CONFIG_DIR = Path(__file__).resolve().parents[1] / "configs"
@@ -127,3 +127,45 @@ def test_partially_visible_circle_does_not_crash() -> None:
     result = detector.detect(image)
 
     assert isinstance(result.detections, list)
+
+
+def test_blob_detects_oval() -> None:
+    detector = BlobDetector.from_config(CONFIG_DIR / "blob.yaml")
+    image = np.zeros((260, 320, 3), dtype=np.uint8)
+    cv2.ellipse(image, (160, 130), (45, 85), 0, 0, 360, (255, 255, 255), -1)
+
+    result = detector.detect(image)
+
+    assert any(np.hypot(item.center_x - 160, item.center_y - 130) <= 10 for item in result.detections)
+
+
+def test_blob_detects_partially_occluded_oval() -> None:
+    detector = BlobDetector.from_config(CONFIG_DIR / "blob.yaml")
+    image = np.zeros((260, 320, 3), dtype=np.uint8)
+    cv2.ellipse(image, (160, 130), (55, 85), 0, 0, 360, (255, 255, 255), -1)
+    cv2.rectangle(image, (155, 45), (205, 145), (0, 0, 0), -1)
+
+    result = detector.detect(image)
+
+    assert any(np.hypot(item.center_x - 145, item.center_y - 145) <= 35 for item in result.detections)
+
+
+def test_hybrid_detects_colored_oval() -> None:
+    detector = HybridDetector.from_config(CONFIG_DIR / "hybrid.yaml")
+    hsv_image = np.zeros((260, 320, 3), dtype=np.uint8)
+    cv2.ellipse(hsv_image, (160, 130), (45, 80), 0, 0, 360, (90, 220, 220), -1)
+    image = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+
+    result = detector.detect(image)
+
+    assert any(np.hypot(item.center_x - 160, item.center_y - 130) <= 10 for item in result.detections)
+
+
+def test_hybrid_white_blob_fallback() -> None:
+    detector = HybridDetector.from_config(CONFIG_DIR / "hybrid.yaml")
+    image = np.zeros((260, 320, 3), dtype=np.uint8)
+    cv2.ellipse(image, (160, 130), (40, 20), 0, 0, 360, (230, 230, 230), -1)
+
+    result = detector.detect(image)
+
+    assert any(np.hypot(item.center_x - 160, item.center_y - 130) <= 10 for item in result.detections)

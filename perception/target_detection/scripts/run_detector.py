@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from perception.target_detection.detectors import BlobDetector, HoughCircleDetector, HSVDetector
+from perception.target_detection.detectors import BlobDetector, HoughCircleDetector, HSVDetector, HybridDetector
 from perception.target_detection.detectors.base import Detection, DetectorResult
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff"}
@@ -22,13 +22,14 @@ DEFAULT_CONFIGS = {
     "hough": REPO_ROOT / "perception" / "target_detection" / "configs" / "hough.yaml",
     "blob": REPO_ROOT / "perception" / "target_detection" / "configs" / "blob.yaml",
     "hsv": REPO_ROOT / "perception" / "target_detection" / "configs" / "hsv.yaml",
+    "hybrid": REPO_ROOT / "perception" / "target_detection" / "configs" / "hybrid.yaml",
 }
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "perception" / "target_detection" / "outputs"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Hough or blob target detection.")
-    parser.add_argument("--detector", choices=("hough", "blob", "hsv"), required=True)
+    parser.add_argument("--detector", choices=("hough", "blob", "hsv", "hybrid"), required=True)
     parser.add_argument("--input", required=True, help="Image file or directory of images.")
     parser.add_argument("--config", help="YAML detector config path. Defaults to detector config.")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
@@ -87,6 +88,8 @@ def build_detector(detector_name: str, config_path: Path):
         return BlobDetector.from_config(config_path)
     if detector_name == "hsv":
         return HSVDetector.from_config(config_path)
+    if detector_name == "hybrid":
+        return HybridDetector.from_config(config_path)
     raise ValueError(f"Unsupported detector: {detector_name}")
 
 
@@ -135,7 +138,23 @@ def draw_detection(image, detection: Detection) -> None:
     radius = int(round(detection.radius or max(detection.bbox[2], detection.bbox[3]) / 2.0))
     x, y, width, height = detection.bbox
     cv2.circle(image, center, 4, (0, 0, 255), -1)
-    cv2.circle(image, center, max(1, radius), (0, 255, 0), 2)
+    if detection.ellipse_axes is not None:
+        axes = (
+            max(1, int(round(detection.ellipse_axes[0]))),
+            max(1, int(round(detection.ellipse_axes[1]))),
+        )
+        cv2.ellipse(
+            image,
+            center,
+            axes,
+            float(detection.ellipse_angle or 0.0),
+            0,
+            360,
+            (0, 255, 0),
+            2,
+        )
+    else:
+        cv2.circle(image, center, max(1, radius), (0, 255, 0), 2)
     cv2.rectangle(
         image,
         (int(round(x)), int(round(y))),

@@ -26,6 +26,8 @@ class Detection:
     radius: float | None
     bbox: BBox
     score: float | None = None
+    ellipse_axes: tuple[float, float] | None = None
+    ellipse_angle: float | None = None
 
     def as_dict(self) -> dict[str, float | str | None | BBox]:
         return {
@@ -35,6 +37,8 @@ class Detection:
             "radius": self.radius,
             "bbox": self.bbox,
             "score": self.score,
+            "ellipse_axes": self.ellipse_axes,
+            "ellipse_angle": self.ellipse_angle,
         }
 
 

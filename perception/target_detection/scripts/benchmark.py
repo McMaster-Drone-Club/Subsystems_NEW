@@ -47,7 +47,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from perception.target_detection.detectors import BlobDetector, HoughCircleDetector, HSVDetector
+from perception.target_detection.detectors import (
+    BlobDetector,
+    HoughCircleDetector,
+    HSVDetector,
+    HybridDetector,
+)
 from perception.target_detection.detectors.base import BBox, Detection, DetectorResult, bbox_iou
 
 # Reuse the single-image drawing helpers so annotated outputs look the same
@@ -61,11 +66,13 @@ DEFAULT_CONFIGS = {
     "hough": REPO_ROOT / "perception" / "target_detection" / "configs" / "hough.yaml",
     "blob": REPO_ROOT / "perception" / "target_detection" / "configs" / "blob.yaml",
     "hsv": REPO_ROOT / "perception" / "target_detection" / "configs" / "hsv.yaml",
+    "hybrid": REPO_ROOT / "perception" / "target_detection" / "configs" / "hybrid.yaml",
 }
 DETECTOR_CLASSES = {
     "hough": HoughCircleDetector,
     "blob": BlobDetector,
     "hsv": HSVDetector,
+    "hybrid": HybridDetector,
 }
 
 MIN_MATCH_RADIUS_PX = 8.0
@@ -348,9 +355,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--detectors",
         nargs="+",
-        choices=("hough", "blob", "hsv"),
-        default=("hough", "blob", "hsv"),
-        help="Subset of detectors to run, e.g. --detectors hough blob. Defaults to all three.",
+        choices=("hough", "blob", "hsv", "hybrid"),
+        default=("hough", "blob", "hsv", "hybrid"),
+        help="Subset of detectors to run, e.g. --detectors hsv hybrid. Defaults to all four.",
     )
     return parser.parse_args()
 

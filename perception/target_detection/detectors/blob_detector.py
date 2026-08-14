@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from perception.target_detection.detectors.base import (
     Detection,
     DetectorResult,
     TimingInfo,
+    bbox_iou,
     circle_bbox,
     load_yaml_config,
     validate_bgr_image,
@@ -30,7 +32,13 @@ class BlobDetector(BaseTargetDetector):
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
-        self._detector = cv2.SimpleBlobDetector_create(self._build_params())
+        self._detector = cv2.SimpleBlobDetector_create(self._build_params("blob"))
+        small_config = self.config.get("small_blob", {})
+        self._small_detector = (
+            cv2.SimpleBlobDetector_create(self._build_params("small_blob"))
+            if small_config.get("enabled", False)
+            else None
+        )
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> "BlobDetector":
@@ -42,11 +50,15 @@ class BlobDetector(BaseTargetDetector):
 
         preprocess_start = time.perf_counter()
         processed = self._preprocess(image)
+        edge_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         preprocessing_ms = (time.perf_counter() - preprocess_start) * 1000.0
 
         detector_start = time.perf_counter()
-        keypoints = self._detector.detect(processed)
+        keypoints = list(self._detector.detect(processed))
+        if self._small_detector is not None:
+            keypoints.extend(self._small_detector.detect(processed))
         detections = self._to_detections(keypoints, image.shape)
+        detections = self._filter_by_boundary_edge(detections, edge_image)
         detection_ms = (time.perf_counter() - detector_start) * 1000.0
 
         total_ms = (time.perf_counter() - total_start) * 1000.0
@@ -98,10 +110,63 @@ class BlobDetector(BaseTargetDetector):
                     score=response,
                 )
             )
-        return sorted(detections, key=lambda item: (item.center_y, item.center_x))
+        return self._deduplicate(detections)
 
-    def _build_params(self) -> cv2.SimpleBlobDetector_Params:
-        params_config = self.config.get("blob", {})
+    def _filter_by_boundary_edge(
+        self,
+        detections: list[Detection],
+        gray: np.ndarray,
+    ) -> list[Detection]:
+        edge_config = self.config.get("boundary_edge_filter", {})
+        if not edge_config.get("enabled", False):
+            return detections
+
+        min_mean_gradient = float(edge_config.get("min_mean_gradient", 40.0))
+        inner_factor = float(edge_config.get("inner_radius_factor", 0.8))
+        outer_factor = float(edge_config.get("outer_radius_factor", 1.2))
+        gradient = cv2.magnitude(
+            cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3),
+            cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3),
+        )
+        kept: list[Detection] = []
+        height, width = gray.shape
+        for detection in detections:
+            radius = detection.radius or 0.0
+            outer_radius = max(1, int(math.ceil(radius * outer_factor)))
+            x1 = max(0, int(math.floor(detection.center_x - outer_radius)))
+            y1 = max(0, int(math.floor(detection.center_y - outer_radius)))
+            x2 = min(width, int(math.ceil(detection.center_x + outer_radius + 1)))
+            y2 = min(height, int(math.ceil(detection.center_y + outer_radius + 1)))
+            yy, xx = np.ogrid[y1:y2, x1:x2]
+            distance = np.sqrt(
+                (xx - detection.center_x) ** 2 + (yy - detection.center_y) ** 2
+            )
+            ring = (distance >= radius * inner_factor) & (distance <= radius * outer_factor)
+            values = gradient[y1:y2, x1:x2][ring]
+            if values.size and float(np.mean(values)) >= min_mean_gradient:
+                kept.append(detection)
+        return kept
+
+    def _deduplicate(self, detections: list[Detection]) -> list[Detection]:
+        duplicate_config = self.config.get("duplicate_suppression", {})
+        center_factor = float(duplicate_config.get("center_distance_factor", 0.5))
+        iou_threshold = float(duplicate_config.get("iou_threshold", 0.5))
+        kept: list[Detection] = []
+        for detection in sorted(detections, key=lambda item: item.radius or 0.0, reverse=True):
+            if any(
+                math.hypot(
+                    detection.center_x - existing.center_x,
+                    detection.center_y - existing.center_y,
+                ) < max(detection.radius or 0.0, existing.radius or 0.0) * center_factor
+                or bbox_iou(detection.bbox, existing.bbox) >= iou_threshold
+                for existing in kept
+            ):
+                continue
+            kept.append(detection)
+        return sorted(kept, key=lambda item: (item.center_y, item.center_x))
+
+    def _build_params(self, section: str) -> cv2.SimpleBlobDetector_Params:
+        params_config = self.config.get(section, {})
         params = cv2.SimpleBlobDetector_Params()
 
         params.minThreshold = float(params_config.get("min_threshold", 10))

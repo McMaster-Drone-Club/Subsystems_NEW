@@ -68,6 +68,12 @@ Run only the tuned Hough and blob detectors:
 python perception\target_detection\scripts\benchmark.py --detectors hough blob
 ```
 
+Compare the teammate-owned HSV detector with the HSV-gated blob hybrid:
+
+```powershell
+python perception\target_detection\scripts\benchmark.py --detectors hsv hybrid
+```
+
 The benchmark uses images from `test-images`, COCO ground truth from `test-image-annotations\annotations.coco.json`, and the checked-in global configurations in `perception\target_detection\configs`. Annotated overlays are generated in `perception\target_detection\outputs\benchmark\annotated`.
 
 Run Hough on one image and save an annotation:
@@ -137,13 +143,15 @@ Image loading, annotation drawing, and output writing are excluded from detector
 
 `configs\hough.yaml` controls grayscale preprocessing, blur, Hough `dp`, minimum center distance, Canny high threshold `param1`, accumulator threshold `param2`, radius bounds, and duplicate suppression.
 
-`configs\blob.yaml` controls grayscale preprocessing, blur, threshold range, area range, circularity, convexity, inertia, minimum blob spacing, and optional blob color filtering. SimpleBlobDetector keypoint size is interpreted as blob diameter, so reported radius is `keypoint.size / 2`.
+`configs\blob.yaml` controls grayscale preprocessing, blur, threshold range, area range, circularity, convexity, inertia, minimum blob spacing, and optional blob color filtering. The blob detector uses a permissive large-shape pass for oval or partially occluded targets and a stricter small-shape pass for small circular targets, then suppresses duplicates between the two passes. A global boundary-gradient check rejects soft circular highlights and lens flare while retaining blobs with a physical target-like edge. SimpleBlobDetector keypoint size is interpreted as blob diameter, so reported radius is `keypoint.size / 2`.
 
 The checked-in parameters are one global configuration per detector; no filename, image-specific value, or ground-truth coordinate is used by detector logic. Hough and blob were tuned with controlled changes to smoothing, Hough voting/radius/spacing, and blob threshold/area/shape/spacing filters. The measured trials and remaining limitations are summarized in `TUNING_NOTES.md`.
 
 ## Benchmark metrics
 
 The shared benchmark reports TP, FP, FN, precision, recall, F1, matched center error, matched bounding-box IoU, and preprocessing/detection/total latency. All detectors are evaluated against the same annotations and matching rules.
+
+The hybrid reuses `configs\hsv.yaml` for its primary color mask. It applies connected-region and adaptive circle/ellipse geometry, uses the tuned blob detector as a tightly gated fallback for low-saturation white targets, and invokes a color-gated Hough fallback only when the faster stages find nothing. Hybrid-specific settings live in `configs\hybrid.yaml`.
 
 ## Known failure cases
 
