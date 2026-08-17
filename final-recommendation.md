@@ -2,8 +2,6 @@
 **Recommendation:** HSV Detector
 
 
-The tables below show each detection method's performance on the training set and the test set.
-
 ## Accuracy Data
 
 **Training set (20 images):**
