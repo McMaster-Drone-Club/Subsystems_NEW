@@ -13,9 +13,13 @@ perception/
       base.py
       hough_detector.py
       blob_detector.py
+      hsv_detector.py
+      hybrid_detector.py
     configs/
       hough.yaml
       blob.yaml
+      hsv.yaml
+      hybrid.yaml
     scripts/
       run_detector.py
     tests/
