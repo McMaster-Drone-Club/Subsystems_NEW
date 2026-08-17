@@ -59,9 +59,20 @@ from perception.target_detection.detectors.base import BBox, Detection, Detector
 # whether produced by run_detector.py or this script.
 from run_detector import annotate_image  # noqa: E402  (path set up above)
 
-DEFAULT_ANNOTATIONS = REPO_ROOT / "test-image-annotations" / "annotations.coco.json"
-DEFAULT_IMAGES_DIR = REPO_ROOT / "test-images"
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "perception" / "target_detection" / "outputs" / "benchmark"
+TRAIN_ANNOTATIONS = REPO_ROOT / "image-annotations" / "training-annotations.coco.json"
+TRAIN_IMAGES_DIR = REPO_ROOT / "training-images"
+TRAIN_OUTPUT_DIR = REPO_ROOT / "perception" / "target_detection" / "outputs" / "benchmark" / "train"
+
+TEST_ANNOTATIONS = REPO_ROOT / "image-annotations" / "test-annotations.coco.json"
+TEST_IMAGES_DIR = REPO_ROOT / "test-images"
+TEST_OUTPUT_DIR = REPO_ROOT / "perception" / "target_detection" / "outputs" / "benchmark" / "test"
+
+# (label, annotations_path, images_dir, output_dir) for each pass, run in order.
+DATASETS: list[tuple[str, Path, Path, Path]] = [
+    ("train", TRAIN_ANNOTATIONS, TRAIN_IMAGES_DIR, TRAIN_OUTPUT_DIR),
+    ("test", TEST_ANNOTATIONS, TEST_IMAGES_DIR, TEST_OUTPUT_DIR),
+]
+
 DEFAULT_CONFIGS = {
     "hough": REPO_ROOT / "perception" / "target_detection" / "configs" / "hough.yaml",
     "blob": REPO_ROOT / "perception" / "target_detection" / "configs" / "blob.yaml",
@@ -83,7 +94,7 @@ MIN_MATCH_RADIUS_PX = 8.0
        The IoU floor stops a small, wrongly-sized detection from being credited
        as a correct find just because it lands near a much larger target's center. '''
 MATCH_RADIUS_MULTIPLIER = 1.0
-MIN_MATCH_IOU = 0.1
+MIN_MATCH_IOU = 0.5
 GT_CIRCLE_COLOR = (255, 0, 255)  # magenta
 GT_CENTER_COLOR = (0, 255, 255)  # yellow
 
@@ -349,15 +360,18 @@ def parse_args() -> argparse.Namespace:
             "checked-in configs, against the repo's labeled dataset."
         )
     )
-    parser.add_argument("--annotations", default=str(DEFAULT_ANNOTATIONS), help="Path to the COCO annotation file.")
-    parser.add_argument("--images-dir", default=str(DEFAULT_IMAGES_DIR), help="Directory of labeled images.")
-    parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Where to write annotated images.")
     parser.add_argument(
         "--detectors",
         nargs="+",
         choices=("hough", "blob", "hsv", "hybrid"),
         default=("hough", "blob", "hsv", "hybrid"),
         help="Subset of detectors to run, e.g. --detectors hsv hybrid. Defaults to all four.",
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=("train", "test"),
+        default=None,
+        help="Run only the train or only the test pass. Defaults to running both, train then test.",
     )
     return parser.parse_args()
 
@@ -374,19 +388,19 @@ def _natural_sort_key(file_name: str) -> tuple[int, str]:
     return (1, file_name)
 
 
-def main() -> int:
-    args = parse_args()
-    annotations_path = Path(args.annotations)
-    images_dir = Path(args.images_dir)
-    output_dir = Path(args.output_dir)
-
+def run_dataset(
+    label: str,
+    annotations_path: Path,
+    images_dir: Path,
+    output_dir: Path,
+    detectors: dict[str, Any],
+) -> None:
+    """Run every detector over one labeled image set and print its report."""
     ground_truth = load_ground_truth(annotations_path)
 
     missing_images = [name for name in ground_truth if not (images_dir / name).exists()]
     if missing_images:
         print(f"Warning: {len(missing_images)} labeled image(s) not found in {images_dir}: {missing_images}", file=sys.stderr)
-
-    detectors = {name: DETECTOR_CLASSES[name].from_config(DEFAULT_CONFIGS[name]) for name in args.detectors}
 
     annotated_dir = output_dir / "annotated"
     annotated_dir.mkdir(parents=True, exist_ok=True)
@@ -416,9 +430,22 @@ def main() -> int:
 
     summaries = {method: summarize_method(evaluations) for method, evaluations in evaluations_by_method.items()}
 
+    banner = f" {label.upper()} SET ".center(70, "=")
+    print(f"\n{banner}")
     print_accuracy_table(summaries, len(image_names))
     print_latency_table(summaries)
     print_failure_cases(evaluations_by_method)
+
+
+def main() -> int:
+    args = parse_args()
+
+    detectors = {name: DETECTOR_CLASSES[name].from_config(DEFAULT_CONFIGS[name]) for name in args.detectors}
+
+    datasets = DATASETS if args.dataset is None else [d for d in DATASETS if d[0] == args.dataset]
+
+    for label, annotations_path, images_dir, output_dir in datasets:
+        run_dataset(label, annotations_path, images_dir, output_dir, detectors)
     return 0
 
 
