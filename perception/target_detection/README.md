@@ -83,13 +83,13 @@ The benchmark uses images from `test-images`, COCO ground truth from `test-image
 Run Hough on one image and save an annotation:
 
 ```powershell
-python perception\target_detection\scripts\run_detector.py --detector hough --input test-images\0.png --config perception\target_detection\configs\hough.yaml --output-dir perception\target_detection\outputs --save-annotated
+python perception\target_detection\scripts\run_detector.py --detector hough --input test-images\test_0.jpg --config perception\target_detection\configs\hough.yaml --output-dir perception\target_detection\outputs --save-annotated
 ```
 
 Run blob detection on one image:
 
 ```powershell
-python perception\target_detection\scripts\run_detector.py --detector blob --input test-images\0.png --config perception\target_detection\configs\blob.yaml --output-dir perception\target_detection\outputs --save-annotated
+python perception\target_detection\scripts\run_detector.py --detector blob --input test-images\test_0.jpg --config perception\target_detection\configs\blob.yaml --output-dir perception\target_detection\outputs --save-annotated
 ```
 
 Run Hough on the complete image directory:
