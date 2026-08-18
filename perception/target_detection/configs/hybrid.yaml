@@ -1,0 +1,43 @@
+method: hybrid
+
+# Reuse the teammate-owned HSV ranges and preprocessing without changing them.
+hsv_config: hsv.yaml
+blob_config: blob.yaml
+hough_config: hough.yaml
+use_hsv_morphology: true
+
+white_blob_fallback:
+  enabled: true
+  max_saturation: 50
+  min_value: 140
+  min_white_fraction: 0.30
+  min_bbox_area: 500
+  max_bbox_area: 5000
+  max_aspect_ratio: 0.80
+  min_refined_bbox_area: 1500
+
+shadow_yellow_hough_fallback:
+  enabled: true
+  only_when_empty: true
+  min_shadow_yellow_fraction: 0.75
+  min_pale_fraction: 0.80
+  radius_scale: 1.40
+  refine_min_radius_scale: 1.10
+  refine_max_radius_scale: 1.75
+  max_center_shift_factor: 0.60
+
+# Bridge small gaps caused by shadows, leaves, or partial occlusion.
+region_merge:
+  close_kernel_size: 7
+  close_iterations: 1
+
+# Geometry filters apply globally to HSV-gated connected regions.
+region:
+  min_area: 150
+  max_area: 50000
+  small_region_max_area: 250
+  large_region_min_area: 500
+  reject_border_touching: true
+  min_solidity: 0.65
+  min_aspect_ratio: 0.20
+  ellipse_aspect_ratio_threshold: 0.75

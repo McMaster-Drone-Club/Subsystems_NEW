@@ -1,0 +1,56 @@
+method: blob
+preprocessing:
+  # Convert BGR input to grayscale, then lightly smooth threshold noise.
+  equalize_histogram: false
+  blur:
+    type: gaussian
+    kernel_size: 3
+    sigma_x: 0
+blob:
+  min_threshold: 10
+  max_threshold: 200
+  threshold_step: 10
+  min_dist_between_blobs: 50
+  filter_by_color: false
+  blob_color: 255
+  filter_by_area: true
+  min_area: 1500
+  max_area: 40000
+  filter_by_circularity: true
+  min_circularity: 0.20
+  filter_by_convexity: false
+  min_convexity: 0.75
+  filter_by_inertia: false
+  min_inertia_ratio: 0.1
+
+# Preserve small, strongly circular targets while the main pass allows large
+# oval or partially occluded targets. Both passes use one global configuration.
+small_blob:
+  enabled: true
+  min_threshold: 10
+  max_threshold: 200
+  threshold_step: 10
+  min_dist_between_blobs: 50
+  filter_by_color: false
+  blob_color: 255
+  filter_by_area: true
+  min_area: 300
+  max_area: 1500
+  filter_by_circularity: true
+  min_circularity: 0.85
+  filter_by_convexity: false
+  min_convexity: 0.75
+  filter_by_inertia: false
+  min_inertia_ratio: 0.1
+
+duplicate_suppression:
+  center_distance_factor: 0.5
+  iou_threshold: 0.5
+
+# Reject soft circular highlights and lens flare. Physical target edges produce
+# a stronger grayscale gradient even when the target is oval or partly blocked.
+boundary_edge_filter:
+  enabled: true
+  min_mean_gradient: 40
+  inner_radius_factor: 0.8
+  outer_radius_factor: 1.2
