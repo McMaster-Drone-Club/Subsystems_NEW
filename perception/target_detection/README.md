@@ -22,10 +22,12 @@ perception/
       hybrid.yaml
     scripts/
       run_detector.py
+      benchmark.py
     tests/
       test_detectors.py
     requirements.txt
     README.md
+    TUNING_NOTES.md
 ```
 
 Generated annotated images are written to `perception\target_detection\outputs` by default. That directory is gitignored.
